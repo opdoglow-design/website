@@ -1,0 +1,12 @@
+{
+  "name": "birthday-website",
+  "version": "1.0.0",
+  "description": "Happy Birthday Website",
+  "scripts": {
+    "start": "npx serve -s .",
+    "dev": "npx serve -s ."
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
