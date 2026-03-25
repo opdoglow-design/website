@@ -1006,6 +1006,9 @@ Forever yours, 💖`,
                     stickyNotes: await getStickyNotes() || []
                 };
 
+                // Always save to localStorage first
+                localStorage.setItem('birthdayData', JSON.stringify(data));
+                
                 try {
                     const { error } = await supabase
                         .from('birthday_data')
@@ -1015,16 +1018,19 @@ Forever yours, 💖`,
                             updated_at: new Date().toISOString() 
                         });
 
-                    if (error) throw error;
+                    if (error) {
+                        console.error('Supabase error:', error);
+                        alert('Saved to browser! (Cloud sync failed - check console)');
+                    }
                 } catch (e) {
-                    console.log('Supabase save failed, trying localStorage');
+                    console.error('Save error:', e);
+                    alert('Saved to browser! (Cloud sync failed)');
                 }
-                
-                localStorage.setItem('birthdayData', JSON.stringify(data));
                 
                 const alert = document.getElementById('alert');
                 const successAlert = document.getElementById('alert');
                 if (successAlert) {
+                    successAlert.textContent = 'Changes saved!';
                     successAlert.style.display = 'block';
                     setTimeout(() => successAlert.style.display = 'none', 3000);
                 }
