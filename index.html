@@ -1192,6 +1192,51 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* Letter Modal */
+        .letter-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+        }
+        .letter-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            z-index: 10000;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .letter-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #ff6b8a;
+        }
+        .letter-modal-content {
+            font-family: Arial, sans-serif;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #333;
+            white-space: pre-wrap;
+        }
+
         /* Countdown to Meet */
         .meet-section {
             display: none;
@@ -1835,7 +1880,7 @@
         <!-- Kissing zone -->
         <div id="kissZone" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9998;font-size:4rem;animation:kissAnim 1s ease-out forwards;pointer-events:none;">😘</div>
 
-        <section class="card">
+        <section class="card" onclick="openLetterModal()">
             <h2>A Letter for You 💕</h2>
             <p class="letter-content" style="line-height:2.2;font-size:1.1rem;font-family:'Dancing Script', cursive;color:#7a5560;letter-spacing:0.5px;text-shadow:0.5px 0.5px 1px rgba(255,105,180,0.1);">Happiest Birthday To My Beautiful Future Wife (Maybe) 💖<br><br>
             First Of All, Thank You. I know you are thinking why I am saying thank you in a birthday wish message. Let me explain that to you...<br><br>
@@ -2693,6 +2738,13 @@
         <div id="youtubeContainer" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2000;width:80%;max-width:500px;">
             <iframe id="youtubePlayer" width="100%" height="300" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
         </div>
+        
+        <!-- Letter Modal -->
+        <div class="letter-modal-overlay" id="letterModalOverlay" onclick="closeLetterModal()"></div>
+        <div class="letter-modal" id="letterModal">
+            <button class="letter-modal-close" onclick="closeLetterModal()">✕</button>
+            <div class="letter-modal-content" id="letterModalContent"></div>
+        </div>
         <div class="music-progress-container">
             <div class="music-progress-bar" id="musicProgressBar" onclick="seekMusic(event)">
                 <div class="music-progress-fill" id="musicProgressFill"></div>
@@ -3320,6 +3372,9 @@ Forever yours, 💖`,
                 const currentTime = this.currentTime;
                 const floatingLyrics = document.getElementById('floatingLyrics');
                 
+                console.log('Audio time:', currentTime);
+                console.log('parsedLyrics:', parsedLyrics);
+                
                 if (!parsedLyrics || parsedLyrics.length === 0) {
                     floatingLyrics.classList.remove('show');
                     return;
@@ -3327,6 +3382,7 @@ Forever yours, 💖`,
                 
                 for (let i = parsedLyrics.length - 1; i >= 0; i--) {
                     if (currentTime >= parsedLyrics[i].time) {
+                        console.log('Showing lyric:', parsedLyrics[i].text);
                         floatingLyrics.textContent = parsedLyrics[i].text;
                         floatingLyrics.classList.add('show');
                         break;
@@ -3430,6 +3486,18 @@ Forever yours, 💖`,
                 clearInterval(musicProgressInterval);
                 musicProgressInterval = null;
             }
+        }
+
+        function openLetterModal() {
+            const content = document.getElementById('letterModalContent');
+            content.textContent = siteData.loveLetter || 'No letter available';
+            document.getElementById('letterModal').style.display = 'block';
+            document.getElementById('letterModalOverlay').style.display = 'block';
+        }
+
+        function closeLetterModal() {
+            document.getElementById('letterModal').style.display = 'none';
+            document.getElementById('letterModalOverlay').style.display = 'none';
         }
 
         function parseLRC(lrcText) {
