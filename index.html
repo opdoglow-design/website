@@ -3356,7 +3356,11 @@ Forever yours, 💖`,
             const btn = document.getElementById('musicBtn');
             const audio = document.getElementById('audioPlayer');
             
-            if (!siteData.songUrl) {
+            console.log('--- Toggle Music ---');
+            console.log('siteData:', siteData);
+            console.log('songUrl:', siteData ? siteData.songUrl : 'no data');
+            
+            if (!siteData || !siteData.songUrl) {
                 alert('Please add a song in admin panel first!');
                 return;
             }
