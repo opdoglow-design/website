@@ -3338,8 +3338,11 @@ Forever yours, 💖`,
         
         function getYouTubeVideoId(url) {
             if (!url) return null;
-            const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-            return match ? match[1] : null;
+            let match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+            if (match) return match[1];
+            match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+            if (match) return match[1];
+            return null;
         }
         
         function toggleMusic() {
@@ -3357,11 +3360,7 @@ Forever yours, 💖`,
                 if (videoId) {
                     const iframe = document.getElementById('youtubePlayer');
                     const ytContainer = document.getElementById('youtubeContainer');
-                    if (iframe.src.includes('embed') && !musicPlaying) {
-                        iframe.src = iframe.src.replace('autoplay=0', 'autoplay=1');
-                    } else if (!iframe.src.includes('embed')) {
-                        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
-                    }
+                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=0&disablekb=1`;
                     ytContainer.style.display = 'block';
                     audio.pause();
                     btn.textContent = '🔊';
