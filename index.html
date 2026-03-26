@@ -2691,7 +2691,6 @@
         <audio id="audioPlayer"></audio>
         <div id="youtubeContainer" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2000;width:80%;max-width:500px;">
             <iframe id="youtubePlayer" width="100%" height="300" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-            <button onclick="stopYouTube()" style="margin-top:10px;padding:8px 20px;background:#ff6b8a;color:white;border:none;border-radius:20px;cursor:pointer;">Stop Music</button>
         </div>
         <div class="music-progress-container">
             <div class="music-progress-bar" id="musicProgressBar" onclick="seekMusic(event)">
@@ -3340,15 +3339,10 @@ Forever yours, 💖`,
         function getYouTubeVideoId(url) {
             if (!url) return null;
             url = url.trim();
-            
-            // Extract video ID from youtu.be/VIDEO_ID?si=xxx format
             let match = url.match(/\/youtu\.be\/([a-zA-Z0-9_-]{11})/);
             if (match) return match[1];
-            
-            // Handle youtube.com/watch?v=xxx format
             match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
             if (match) return match[1];
-            
             return null;
         }
         
@@ -3356,40 +3350,15 @@ Forever yours, 💖`,
             const btn = document.getElementById('musicBtn');
             const audio = document.getElementById('audioPlayer');
             
-            console.log('--- Toggle Music ---');
-            console.log('siteData:', siteData);
-            console.log('songUrl:', siteData ? siteData.songUrl : 'no data');
-            
             if (!siteData || !siteData.songUrl) {
                 alert('Please add a song in admin panel first!');
                 return;
             }
             
-            const url = siteData.songUrl.trim();
-            console.log('URL:', url);
-            console.log('isYouTubeUrl:', isYouTubeUrl(url));
-            
-            // YouTube
-            if (isYouTubeUrl(url)) {
-                const videoId = getYouTubeVideoId(url);
-                console.log('videoId:', videoId);
-                if (videoId) {
-                    const iframe = document.getElementById('youtubePlayer');
-                    const ytContainer = document.getElementById('youtubeContainer');
-                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=0&disablekb=1`;
-                    ytContainer.style.display = 'block';
-                    audio.pause();
-                    btn.textContent = '🔊';
-                    musicPlaying = true;
-                    return;
-                } else {
-                    console.log('Video ID extraction failed, using regular audio');
-                }
-            }
-            
-            // Regular audio
+            // Hide YouTube if open
             const ytContainer = document.getElementById('youtubeContainer');
             ytContainer.style.display = 'none';
+            
             if (audio.src !== siteData.songUrl) {
                 audio.src = siteData.songUrl;
                 audio.loop = true;
@@ -3404,16 +3373,6 @@ Forever yours, 💖`,
                 btn.textContent = '🔊';
             }
             musicPlaying = !musicPlaying;
-        }
-        
-        function stopYouTube() {
-            const ytContainer = document.getElementById('youtubeContainer');
-            const ytPlayer = document.getElementById('youtubePlayer');
-            const btn = document.getElementById('musicBtn');
-            ytPlayer.src = '';
-            ytContainer.style.display = 'none';
-            btn.textContent = '🎵';
-            musicPlaying = false;
         }
 
         // Music Player Functions
@@ -3528,39 +3487,12 @@ Forever yours, 💖`,
             const albumArt = document.getElementById('musicAlbumArt');
             const ytContainer = document.getElementById('youtubeContainer');
             
-            console.log('--- toggleMusicPlay ---');
-            console.log('siteData:', siteData);
-            
             if (!siteData || !siteData.songUrl) {
                 alert('Please add a song in admin panel first!');
                 return;
             }
             
-            // YouTube
-            if (isYouTubeUrl(siteData.songUrl)) {
-                console.log('YouTube detected');
-                const videoId = getYouTubeVideoId(siteData.songUrl);
-                console.log('videoId:', videoId);
-                if (videoId) {
-                    const iframe = document.getElementById('youtubePlayer');
-                    if (ytContainer.style.display === 'block') {
-                        // Stop YouTube
-                        iframe.src = '';
-                        ytContainer.style.display = 'none';
-                        playBtn.textContent = '▶️';
-                        albumArt.classList.remove('playing');
-                    } else {
-                        // Play YouTube
-                        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=0&disablekb=1`;
-                        ytContainer.style.display = 'block';
-                        playBtn.textContent = '⏸️';
-                        albumArt.classList.add('playing');
-                    }
-                    return;
-                }
-            }
-            
-            // Regular audio
+            // Hide YouTube if open
             ytContainer.style.display = 'none';
             
             if (audio.paused) {
@@ -3715,13 +3647,26 @@ Forever yours, 💖`,
                 startMainAnimations();
                 renderContent();
                 if (siteData.songUrl) {
-                    const audio = document.getElementById('audioPlayer');
-                    audio.src = siteData.songUrl;
-                    audio.loop = true;
-                    audio.volume = 0.5;
-                    audio.play().catch(() => {});
-                    document.getElementById('musicPlayBtn').textContent = '⏸️';
-                    startProgressTracking();
+                    // Check if YouTube
+                    if (isYouTubeUrl(siteData.songUrl)) {
+                        const videoId = getYouTubeVideoId(siteData.songUrl);
+                        if (videoId) {
+                            const iframe = document.getElementById('youtubePlayer');
+                            const ytContainer = document.getElementById('youtubeContainer');
+                            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
+                            ytContainer.style.display = 'block';
+                            document.getElementById('musicPlayBtn').textContent = '⏸️';
+                        }
+                    } else {
+                        // Regular audio
+                        const audio = document.getElementById('audioPlayer');
+                        audio.src = siteData.songUrl;
+                        audio.loop = true;
+                        audio.volume = 0.5;
+                        audio.play().catch(() => {});
+                        document.getElementById('musicPlayBtn').textContent = '⏸️';
+                        startProgressTracking();
+                    }
                     if (siteData.songLyrics && siteData.songLyrics.trim()) {
                         parsedLyrics = parseLRC(siteData.songLyrics);
                     }
