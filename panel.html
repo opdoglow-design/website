@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = 'https://drxuopavcclvkoqpyjww.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_evHmekJctv1VHy30p5R1Lg_zCO-DoXY';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyeHVvcGF2Y2NsdmtvcXB5and3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MjcyNjMsImV4cCI6MjA5MDAwMzI2M30.tnWSeFCDPHkXMqEW_pxgUPxxd7mhaX3SSt_cQOpJr7A';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
     <style>
@@ -1006,8 +1006,12 @@ Forever yours, 💖`,
                     stickyNotes: await getStickyNotes() || []
                 };
 
-                // Always save to localStorage first
-                localStorage.setItem('birthdayData', JSON.stringify(data));
+                // Try to save to localStorage (may fail if song is too large)
+                try {
+                    localStorage.setItem('birthdayData', JSON.stringify(data));
+                } catch (e) {
+                    console.log('localStorage full - skipping browser save');
+                }
                 
                 try {
                     const { error } = await supabase
