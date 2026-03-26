@@ -3526,11 +3526,42 @@ Forever yours, 💖`,
             const audio = document.getElementById('audioPlayer');
             const playBtn = document.getElementById('musicPlayBtn');
             const albumArt = document.getElementById('musicAlbumArt');
+            const ytContainer = document.getElementById('youtubeContainer');
             
-            if (!siteData.songUrl) {
+            console.log('--- toggleMusicPlay ---');
+            console.log('siteData:', siteData);
+            
+            if (!siteData || !siteData.songUrl) {
                 alert('Please add a song in admin panel first!');
                 return;
             }
+            
+            // YouTube
+            if (isYouTubeUrl(siteData.songUrl)) {
+                console.log('YouTube detected');
+                const videoId = getYouTubeVideoId(siteData.songUrl);
+                console.log('videoId:', videoId);
+                if (videoId) {
+                    const iframe = document.getElementById('youtubePlayer');
+                    if (ytContainer.style.display === 'block') {
+                        // Stop YouTube
+                        iframe.src = '';
+                        ytContainer.style.display = 'none';
+                        playBtn.textContent = '▶️';
+                        albumArt.classList.remove('playing');
+                    } else {
+                        // Play YouTube
+                        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=0&disablekb=1`;
+                        ytContainer.style.display = 'block';
+                        playBtn.textContent = '⏸️';
+                        albumArt.classList.add('playing');
+                    }
+                    return;
+                }
+            }
+            
+            // Regular audio
+            ytContainer.style.display = 'none';
             
             if (audio.paused) {
                 audio.play().then(() => {
