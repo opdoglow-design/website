@@ -980,6 +980,11 @@ Forever yours, 💖`,
                     });
                 }
                 
+                console.log('songUrl input value:', document.getElementById('songUrl').value);
+                console.log('songTitle input value:', document.getElementById('songTitle').value);
+                console.log('songLyrics input value:', document.getElementById('songLyrics').value.substring(0, 100));
+                console.log('songFile:', songFile ? songFile.name : 'no file');
+                
                 const data = {
                     herName: document.getElementById('herName').value || 'Odhora',
                     birthdayDate: document.getElementById('birthdayDate').value || '2026-04-12',
@@ -1005,6 +1010,10 @@ Forever yours, 💖`,
                     surpriseMessage: document.getElementById('surpriseMessage').value || '',
                     stickyNotes: await getStickyNotes() || []
                 };
+
+                console.log('Full data.songUrl:', data.songUrl ? (data.songUrl.substring(0, 50) + '...') : 'empty');
+                console.log('Full data.songLyrics:', data.songLyrics ? (data.songLyrics.substring(0, 50) + '...') : 'empty');
+                console.log('Full data.songTitle:', data.songTitle);
 
                 // Try to save to localStorage (may fail if song is too large)
                 try {
