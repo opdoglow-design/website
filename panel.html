@@ -398,8 +398,8 @@
             <input type="file" id="songFile" accept="audio/*">
             <p style="margin-top:10px;font-size:0.85rem;color:#8a7075;">Or use a direct link:</p>
             <label>Or paste music URL</label>
-            <input type="text" id="songUrl" placeholder="https://example.com/song.mp3">
-            <p style="margin-top:5px;font-size:0.8rem;color:#8a7075;">⚠️ For best results, use a URL link or keep file under 20MB</p>
+            <input type="text" id="songUrl" placeholder="https://example.com/song.mp3 or YouTube URL">
+            <p style="margin-top:5px;font-size:0.8rem;color:#8a7075;">⚠️ Use a URL link or keep file under 5MB. YouTube URLs also work!</p>
             <label>LRC Lyrics File (optional)</label>
             <input type="file" id="lrcFile" accept=".lrc,.txt">
             <p style="margin-top:10px;font-size:0.85rem;color:#8a7075;">Or enter timed lyrics (format: [mm:ss.xx] lyrics):</p>
@@ -951,14 +951,14 @@ Forever yours, 💖`,
         async function saveData() {
             try {
                 let songUrl = document.getElementById('songUrl').value;
-                
                 const songFile = document.getElementById('songFile').files[0];
                 if (songFile) {
-                    const MAX_SIZE = 20 * 1024 * 1024;
+                    const MAX_SIZE = 5 * 1024 * 1024; // 5MB limit for file uploads
                     if (songFile.size > MAX_SIZE) {
-                        alert('⚠️ File too large! Please use a file under 20MB or use a URL link instead.');
+                        alert('⚠️ File too large! Please use a file under 5MB or use a URL link instead.');
                         return;
                     }
+                    // For small files, convert to base64
                     songUrl = await new Promise((resolve) => {
                         const reader = new FileReader();
                         reader.onload = function(e) {
@@ -982,8 +982,6 @@ Forever yours, 💖`,
                 
                 console.log('songUrl input value:', document.getElementById('songUrl').value);
                 console.log('songTitle input value:', document.getElementById('songTitle').value);
-                console.log('songLyrics input value:', document.getElementById('songLyrics').value.substring(0, 100));
-                console.log('songFile:', songFile ? songFile.name : 'no file');
                 
                 const data = {
                     herName: document.getElementById('herName').value || 'Odhora',
@@ -1011,10 +1009,6 @@ Forever yours, 💖`,
                     stickyNotes: await getStickyNotes() || []
                 };
 
-                console.log('Full data.songUrl:', data.songUrl ? (data.songUrl.substring(0, 50) + '...') : 'empty');
-                console.log('Full data.songLyrics:', data.songLyrics ? (data.songLyrics.substring(0, 50) + '...') : 'empty');
-                console.log('Full data.songTitle:', data.songTitle);
-
                 // Try to save to localStorage (may fail if song is too large)
                 try {
                     localStorage.setItem('birthdayData', JSON.stringify(data));
@@ -1024,13 +1018,23 @@ Forever yours, 💖`,
                 
                 try {
                     console.log('Sending to Supabase...');
-                    const { data: result, error } = await supabaseClient
+                    console.log('Data size:', JSON.stringify(data).length, 'bytes');
+                    
+                    // For large data (audio files), save without waiting for response
+                    const savePromise = supabaseClient
                         .from('birthday_data')
                         .upsert({ 
                             id: 1, 
                             data: data, 
                             updated_at: new Date().toISOString() 
                         });
+                    
+                    // Add timeout wrapper
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Save timeout')), 15000)
+                    );
+                    
+                    const { data: result, error } = await Promise.race([savePromise, timeoutPromise]);
 
                     if (error) {
                         console.error('Supabase error:', error);
