@@ -636,6 +636,27 @@
             transform: scale(1.1);
         }
 
+        /* Letter Button */
+        .letter-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 80px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+            z-index: 100;
+            font-size: 1.3rem;
+            transition: all 0.3s;
+        }
+
+        .letter-btn:hover {
+            transform: scale(1.1);
+        }
+
         /* Info Button */
         .info-btn {
             position: fixed;
@@ -1880,7 +1901,7 @@
         <!-- Kissing zone -->
         <div id="kissZone" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9998;font-size:4rem;animation:kissAnim 1s ease-out forwards;pointer-events:none;">😘</div>
 
-        <section class="card" onclick="openLetterModal()">
+        <section class="card">
             <h2>A Letter for You 💕</h2>
             <p class="letter-content" style="line-height:2.2;font-size:1.1rem;font-family:'Dancing Script', cursive;color:#7a5560;letter-spacing:0.5px;text-shadow:0.5px 0.5px 1px rgba(255,105,180,0.1);">Happiest Birthday To My Beautiful Future Wife (Maybe) 💖<br><br>
             First Of All, Thank You. I know you are thinking why I am saying thank you in a birthday wish message. Let me explain that to you...<br><br>
@@ -2722,6 +2743,7 @@
     </div>
 
     <button class="music-btn" onclick="openMusicPlayer()" id="musicBtn">🎵</button>
+    <button class="letter-btn" onclick="openLetterModal()" id="letterBtn">✉️</button>
     <button class="info-btn" onclick="showInfo()" id="infoBtn">ℹ️</button>
 
     <div class="music-modal-overlay" id="musicOverlay" onclick="closeMusicPlayer()"></div>
