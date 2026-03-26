@@ -3333,13 +3333,17 @@ Forever yours, 💖`,
         let musicPlaying = false;
         
         function isYouTubeUrl(url) {
-            return url && (url.includes('youtube.com') || url.includes('youtu.be'));
+            if (!url) return false;
+            return url.includes('youtube.com') || url.includes('youtu.be');
         }
         
         function getYouTubeVideoId(url) {
             if (!url) return null;
-            let match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+            url = url.trim();
+            // Extract video ID - handle youtu.be/VIDEO_ID?si=xxx format
+            let match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})(?:[?&]|$)/);
             if (match) return match[1];
+            // Handle youtube.com/watch?v=xxx
             match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
             if (match) return match[1];
             return null;
@@ -3349,14 +3353,19 @@ Forever yours, 💖`,
             const btn = document.getElementById('musicBtn');
             const audio = document.getElementById('audioPlayer');
             
+            console.log('songUrl:', siteData.songUrl);
+            
             if (!siteData.songUrl) {
                 alert('Please add a song in admin panel first!');
                 return;
             }
             
+            console.log('isYouTube:', isYouTubeUrl(siteData.songUrl));
+            
             // YouTube
             if (isYouTubeUrl(siteData.songUrl)) {
                 const videoId = getYouTubeVideoId(siteData.songUrl);
+                console.log('videoId:', videoId);
                 if (videoId) {
                     const iframe = document.getElementById('youtubePlayer');
                     const ytContainer = document.getElementById('youtubeContainer');
@@ -3365,7 +3374,10 @@ Forever yours, 💖`,
                     audio.pause();
                     btn.textContent = '🔊';
                     musicPlaying = true;
+                    console.log('Playing YouTube');
                     return;
+                } else {
+                    console.log('Could not extract video ID');
                 }
             }
             
