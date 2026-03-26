@@ -9,7 +9,7 @@
     <script>
         const SUPABASE_URL = 'https://drxuopavcclvkoqpyjww.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyeHVvcGF2Y2NsdmtvcXB5and3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MjcyNjMsImV4cCI6MjA5MDAwMzI2M30.tnWSeFCDPHkXMqEW_pxgUPxxd7mhaX3SSt_cQOpJr7A';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
     </script>
     <style>
         * {
@@ -543,7 +543,7 @@ Forever yours, 💖`,
 
         async function loadData() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('birthday_data')
                     .select('data')
                     .eq('id', 1)
@@ -999,8 +999,8 @@ Forever yours, 💖`,
                     herInfo: getHerInfo() || [],
                     sweetMessage: document.getElementById('sweetMessage').value || '',
                     songTitle: document.getElementById('songTitle').value || '',
-                    songUrl: songUrl || '',
-                    songLyrics: songLyrics || '',
+                    songUrl: songUrl,
+                    songLyrics: songLyrics,
                     surpriseTitle: document.getElementById('surpriseTitle').value || '',
                     surpriseMessage: document.getElementById('surpriseMessage').value || '',
                     stickyNotes: await getStickyNotes() || []
@@ -1014,7 +1014,8 @@ Forever yours, 💖`,
                 }
                 
                 try {
-                    const { error } = await supabase
+                    console.log('Sending to Supabase...');
+                    const { data: result, error } = await supabaseClient
                         .from('birthday_data')
                         .upsert({ 
                             id: 1, 
@@ -1024,19 +1025,18 @@ Forever yours, 💖`,
 
                     if (error) {
                         console.error('Supabase error:', error);
-                        alert('Saved to browser! (Cloud sync failed - check console)');
+                    } else {
+                        console.log('Supabase save success!');
                     }
                 } catch (e) {
-                    console.error('Save error:', e);
-                    alert('Saved to browser! (Cloud sync failed)');
+                    console.error('Supabase save error:', e);
                 }
                 
                 const alert = document.getElementById('alert');
-                const successAlert = document.getElementById('alert');
-                if (successAlert) {
-                    successAlert.textContent = 'Changes saved!';
-                    successAlert.style.display = 'block';
-                    setTimeout(() => successAlert.style.display = 'none', 3000);
+                if (alert) {
+                    alert.textContent = 'Changes saved!';
+                    alert.style.display = 'block';
+                    setTimeout(() => alert.style.display = 'none', 3000);
                 }
             } catch (error) {
                 console.error('Save error:', error);

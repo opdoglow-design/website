@@ -9,7 +9,7 @@
     <script>
         const SUPABASE_URL = 'https://drxuopavcclvkoqpyjww.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyeHVvcGF2Y2NsdmtvcXB5and3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MjcyNjMsImV4cCI6MjA5MDAwMzI2M30.tnWSeFCDPHkXMqEW_pxgUPxxd7mhaX3SSt_cQOpJr7A';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
     </script>
     <style>
         * {
@@ -2857,10 +2857,11 @@ Forever yours, 💖`,
         let siteData = { ...defaultData };
         let countdownAnimationsStarted = false;
         let mainAnimationsRunning = false;
+        let parsedLyrics = [];
 
         async function loadData() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('birthday_data')
                     .select('data')
                     .eq('id', 1)
@@ -2872,7 +2873,7 @@ Forever yours, 💖`,
                     siteData = { ...defaultData, ...data.data };
                 }
                 
-                supabase
+                supabaseClient
                     .channel('birthday_changes')
                     .on('postgres_changes', 
                         { event: '*', schema: 'public', table: 'birthday_data' },
@@ -3388,8 +3389,6 @@ Forever yours, 💖`,
             }
             return parsed.sort((a, b) => a.time - b.time);
         }
-
-        let parsedLyrics = [];
 
         function loadLyrics() {
             const lyricsContainer = document.getElementById('musicLyrics');
