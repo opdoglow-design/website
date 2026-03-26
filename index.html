@@ -3340,12 +3340,15 @@ Forever yours, 💖`,
         function getYouTubeVideoId(url) {
             if (!url) return null;
             url = url.trim();
-            // Extract video ID - handle youtu.be/VIDEO_ID?si=xxx format
-            let match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})(?:[?&]|$)/);
+            
+            // Extract video ID from youtu.be/VIDEO_ID?si=xxx format
+            let match = url.match(/\/youtu\.be\/([a-zA-Z0-9_-]{11})/);
             if (match) return match[1];
-            // Handle youtube.com/watch?v=xxx
+            
+            // Handle youtube.com/watch?v=xxx format
             match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
             if (match) return match[1];
+            
             return null;
         }
         
@@ -3353,18 +3356,18 @@ Forever yours, 💖`,
             const btn = document.getElementById('musicBtn');
             const audio = document.getElementById('audioPlayer');
             
-            console.log('songUrl:', siteData.songUrl);
-            
             if (!siteData.songUrl) {
                 alert('Please add a song in admin panel first!');
                 return;
             }
             
-            console.log('isYouTube:', isYouTubeUrl(siteData.songUrl));
+            const url = siteData.songUrl.trim();
+            console.log('URL:', url);
+            console.log('isYouTubeUrl:', isYouTubeUrl(url));
             
             // YouTube
-            if (isYouTubeUrl(siteData.songUrl)) {
-                const videoId = getYouTubeVideoId(siteData.songUrl);
+            if (isYouTubeUrl(url)) {
+                const videoId = getYouTubeVideoId(url);
                 console.log('videoId:', videoId);
                 if (videoId) {
                     const iframe = document.getElementById('youtubePlayer');
@@ -3374,10 +3377,9 @@ Forever yours, 💖`,
                     audio.pause();
                     btn.textContent = '🔊';
                     musicPlaying = true;
-                    console.log('Playing YouTube');
                     return;
                 } else {
-                    console.log('Could not extract video ID');
+                    console.log('Video ID extraction failed, using regular audio');
                 }
             }
             
