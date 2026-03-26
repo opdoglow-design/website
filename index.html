@@ -1167,6 +1167,7 @@
 
         /* Floating Lyrics Popup */
         .floating-lyrics {
+            display: none;
             position: fixed;
             bottom: 80px;
             left: 50%;
@@ -3319,6 +3320,11 @@ Forever yours, 💖`,
                 const currentTime = this.currentTime;
                 const floatingLyrics = document.getElementById('floatingLyrics');
                 
+                if (!parsedLyrics || parsedLyrics.length === 0) {
+                    floatingLyrics.classList.remove('show');
+                    return;
+                }
+                
                 for (let i = parsedLyrics.length - 1; i >= 0; i--) {
                     if (currentTime >= parsedLyrics[i].time) {
                         floatingLyrics.textContent = parsedLyrics[i].text;
@@ -3669,6 +3675,9 @@ Forever yours, 💖`,
                     }
                     if (siteData.songLyrics && siteData.songLyrics.trim()) {
                         parsedLyrics = parseLRC(siteData.songLyrics);
+                        // Initialize floating lyrics
+                        const floatingLyrics = document.getElementById('floatingLyrics');
+                        floatingLyrics.style.display = 'block';
                     }
                 }
             }, 1000);
