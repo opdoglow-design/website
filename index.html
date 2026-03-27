@@ -3326,9 +3326,6 @@ Forever yours, 💖`,
                 const currentTime = this.currentTime;
                 const floatingLyrics = document.getElementById('floatingLyrics');
                 
-                console.log('Audio time:', currentTime);
-                console.log('parsedLyrics:', parsedLyrics);
-                
                 if (!parsedLyrics || parsedLyrics.length === 0) {
                     floatingLyrics.classList.remove('show');
                     return;
@@ -3336,7 +3333,6 @@ Forever yours, 💖`,
                 
                 for (let i = parsedLyrics.length - 1; i >= 0; i--) {
                     if (currentTime >= parsedLyrics[i].time) {
-                        console.log('Showing lyric:', parsedLyrics[i].text);
                         floatingLyrics.textContent = parsedLyrics[i].text;
                         floatingLyrics.classList.add('show');
                         break;
@@ -3653,7 +3649,86 @@ Forever yours, 💖`,
 
         let introHidden = false;
         let dataLoaded = false;
+        let musicAutoPlayed = false;
         
+        async function loadData() {
+            console.log('Loading data...');
+            console.log('Supabase client:', supabaseClient);
+            
+            // If supabaseClient is null, try localStorage directly
+            if (!supabaseClient) {
+                console.log('No Supabase client, loading from localStorage');
+                const saved = localStorage.getItem('birthdayData');
+                if (saved) {
+                    siteData = { ...defaultData, ...JSON.parse(saved) };
+                }
+                dataLoaded = true;
+                renderContent();
+                tryAutoPlayMusic();
+                return;
+            }
+            
+            try {
+                console.log('Fetching from Supabase...');
+                const { data, error } = await supabaseClient
+                    .from('birthday_data')
+                    .select('data')
+                    .eq('id', 1)
+                    .single();
+                    
+                console.log('Supabase response:', data, error);
+                
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw error;
+                }
+                
+                if (data && data.data && Object.keys(data.data).length > 0) {
+                    console.log('Got data from Supabase, updating siteData');
+                    siteData = { ...defaultData, ...data.data };
+                    
+                    // Also save to localStorage for backup
+                    try {
+                        localStorage.setItem('birthdayData', JSON.stringify(siteData));
+                    } catch(e) { console.log('localStorage save failed'); }
+                }
+                
+                dataLoaded = true;
+                console.log('songUrl loaded:', siteData.songUrl);
+                console.log('songLyrics loaded:', siteData.songLyrics ? 'yes' : 'no');
+                
+                supabaseClient
+                    .channel('birthday_changes')
+                    .on('postgres_changes', 
+                        { event: '*', schema: 'public', table: 'birthday_data' },
+                        (payload) => {
+                            console.log('Real-time update received:', payload);
+                            if (payload.new && payload.new.data) {
+                                siteData = { ...defaultData, ...payload.new.data };
+                                renderContent();
+                            }
+                        }
+                    )
+                    .subscribe();
+                    
+                renderContent();
+                tryAutoPlayMusic();
+            } catch (e) {
+                console.error('Error loading data:', e);
+                // Fallback to localStorage
+                try {
+                    const saved = localStorage.getItem('birthdayData');
+                    if (saved) {
+                        console.log('Loading from localStorage fallback');
+                        siteData = { ...defaultData, ...JSON.parse(saved) };
+                    }
+                } catch(e) { console.log('localStorage read failed'); }
+                dataLoaded = true;
+                renderContent();
+                tryAutoPlayMusic();
+            }
+        }
+
         function hideIntro() {
             if (introHidden) return;
             introHidden = true;
@@ -3664,28 +3739,44 @@ Forever yours, 💖`,
                 document.getElementById('intro').style.display = 'none';
                 startMainAnimations();
                 renderContent();
-                // Auto play music after intro
-                setTimeout(() => {
-                    if (siteData.songUrl) {
-                        if (isYouTubeUrl(siteData.songUrl)) {
-                            const videoId = getYouTubeVideoId(siteData.songUrl);
-                            if (videoId) {
-                                const iframe = document.getElementById('youtubePlayer');
-                                const ytContainer = document.getElementById('youtubeContainer');
-                                iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
-                                ytContainer.style.display = 'block';
-                            }
-                        } else {
-                            const audio = document.getElementById('audioPlayer');
-                            audio.src = siteData.songUrl;
-                            audio.loop = true;
-                            audio.volume = 0.5;
-                            audio.play().catch(e => console.log('Autoplay failed:', e));
-                        }
-                    }
-                }, 500);
+                tryAutoPlayMusic();
             }, 1000);
         }
+
+        function tryAutoPlayMusic() {
+            if (musicAutoPlayed) return;
+            if (!siteData.songUrl) {
+                console.log('No song URL available');
+                return;
+            }
+            console.log('Auto playing music...');
+            musicAutoPlayed = true;
+            
+            if (isYouTubeUrl(siteData.songUrl)) {
+                const videoId = getYouTubeVideoId(siteData.songUrl);
+                if (videoId) {
+                    const iframe = document.getElementById('youtubePlayer');
+                    const ytContainer = document.getElementById('youtubeContainer');
+                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
+                    ytContainer.style.display = 'block';
+                }
+            } else {
+                const audio = document.getElementById('audioPlayer');
+                audio.src = siteData.songUrl;
+                audio.loop = true;
+                audio.volume = 0.5;
+                audio.play().catch(e => console.log('Autoplay failed:', e));
+            }
+            
+            // Initialize floating lyrics
+            if (siteData.songLyrics && siteData.songLyrics.trim()) {
+                parsedLyrics = parseLRC(siteData.songLyrics);
+                const floatingLyrics = document.getElementById('floatingLyrics');
+                floatingLyrics.style.display = 'block';
+            }
+        }
+        
+        loadData();
 
         function startMainAnimations() {
             if (mainAnimationsRunning) return;
