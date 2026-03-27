@@ -967,15 +967,6 @@ Forever yours, 💖`,
                         reader.readAsDataURL(songFile);
                     });
                 }
-                    // For small files, convert to base64
-                    songUrl = await new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            resolve(e.target.result);
-                        };
-                        reader.readAsDataURL(songFile);
-                    });
-                }
                 
                 let songLyrics = document.getElementById('songLyrics').value;
                 const lrcFile = document.getElementById('lrcFile').files[0];
