@@ -627,7 +627,7 @@
             border: none;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(255, 107, 138, 0.4);
-            z-index: 100;
+            z-index: 10000;
             font-size: 1.3rem;
             transition: all 0.3s;
         }
@@ -639,8 +639,8 @@
         /* Letter Button */
         .letter-btn {
             position: fixed;
-            bottom: 20px;
-            right: 80px;
+            bottom: 80px;
+            right: 20px;
             width: 50px;
             height: 50px;
             border-radius: 50%;
@@ -654,6 +654,10 @@
         }
 
         .letter-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .music-btn:hover {
             transform: scale(1.1);
         }
 
