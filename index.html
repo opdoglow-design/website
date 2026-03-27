@@ -10,11 +10,9 @@
         const SUPABASE_URL = 'https://drxuopavcclvkoqpyjww.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyeHVvcGF2Y2NsdmtvcXB5and3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MjcyNjMsImV4cCI6MjA5MDAwMzI2M30.tnWSeFCDPHkXMqEW_pxgUPxxd7mhaX3SSt_cQOpJr7A';
         const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+        console.log('Supabase client initialized:', supabaseClient);
     </script>
     <style>
-        /* Hide main content until loaded */
-        .main-content { opacity: 0; }
-        .main-content.loaded { opacity: 1; transition: opacity 0.5s; }
         * {
             margin: 0;
             padding: 0;
@@ -2509,6 +2507,10 @@
             }
             window.addEventListener('scroll', updateProgress);
 
+            // Random sweet messages in console
+            console.log('%c💕 Made with love just for you 💕', 'color: #ff6b8a; font-size: 20px; font-weight: bold;');
+            console.log('%cThis website was created with 💖', 'color: #ff9eb5; font-size: 14px;');
+
             // Glitter cursor effect
             const cursor = document.createElement('div');
             cursor.style.cssText = `
@@ -2869,33 +2871,43 @@ Forever yours, 💖`,
         let parsedLyrics = [];
 
         async function loadData() {
+            console.log('Loading data...');
+            console.log('Supabase client:', supabaseClient);
+            
             // If supabaseClient is null, try localStorage directly
             if (!supabaseClient) {
+                console.log('No Supabase client, loading from localStorage');
                 const saved = localStorage.getItem('birthdayData');
                 if (saved) {
                     siteData = { ...defaultData, ...JSON.parse(saved) };
                 }
-                dataLoaded = true;
-                document.getElementById('mainContent').classList.add('loaded');
                 renderContent();
-                tryAutoPlayMusic();
                 return;
             }
             
             try {
+                console.log('Fetching from Supabase...');
                 const { data, error } = await supabaseClient
                     .from('birthday_data')
                     .select('data')
                     .eq('id', 1)
                     .single();
+                    
+                console.log('Supabase response:', data, error);
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw error;
+                }
                 
                 if (data && data.data && Object.keys(data.data).length > 0) {
+                    console.log('Got data from Supabase, updating siteData');
                     siteData = { ...defaultData, ...data.data };
+                    
+                    // Also save to localStorage for backup
                     try {
                         localStorage.setItem('birthdayData', JSON.stringify(siteData));
-                    } catch(e) {}
+                    } catch(e) { console.log('localStorage save failed'); }
                 }
                 
                 supabaseClient
@@ -2903,6 +2915,7 @@ Forever yours, 💖`,
                     .on('postgres_changes', 
                         { event: '*', schema: 'public', table: 'birthday_data' },
                         (payload) => {
+                            console.log('Real-time update received:', payload);
                             if (payload.new && payload.new.data) {
                                 siteData = { ...defaultData, ...payload.new.data };
                                 renderContent();
@@ -2911,28 +2924,859 @@ Forever yours, 💖`,
                     )
                     .subscribe();
                     
-                dataLoaded = true;
-                document.getElementById('mainContent').classList.add('loaded');
                 renderContent();
-                tryAutoPlayMusic();
             } catch (e) {
+                console.error('Error loading data:', e);
                 // Fallback to localStorage
                 try {
                     const saved = localStorage.getItem('birthdayData');
                     if (saved) {
+                        console.log('Loading from localStorage fallback');
                         siteData = { ...defaultData, ...JSON.parse(saved) };
                     }
-                } catch(e) {}
+                } catch(e) { console.log('localStorage read failed'); }
+                renderContent();
+            }
+        }
+
+        loadData();
+
+        function renderContent() {
+            // Parse lyrics for floating lyrics display
+            if (siteData.songLyrics && siteData.songLyrics.trim()) {
+                parsedLyrics = parseLRC(siteData.songLyrics);
+            }
+            
+            // Countdown Mode - Hide all content except countdown if birthday hasn't arrived
+            const birthday = new Date(siteData.birthdayDate + ' ' + (siteData.birthdayTime || '00:00:00')).getTime();
+            const now = new Date().getTime();
+            const isBirthdayArrived = birthday <= now;
+            
+            if (siteData.countdownMode && !isBirthdayArrived) {
+                // Hide intro, show only countdown
+                document.getElementById('intro').style.display = 'none';
+                document.querySelectorAll('.container .card, .container .hero, .container .song-section, .button-container, .main-content .float-emoji, .main-content .sticky-notes-container').forEach(el => {
+                    if (!el.classList.contains('countdown-only')) {
+                        el.style.display = 'none';
+                    }
+                });
+                // Start countdown animations (only once)
+                if (!countdownAnimationsStarted) {
+                    countdownAnimationsStarted = true;
+                    introHidden = true;
+                    animateLoveMeter();
+                    startMainAnimations();
+                }
+            } else {
+                // Show intro first
+                document.getElementById('intro').style.display = '';
+                document.querySelectorAll('.container .card, .container .hero, .container .song-section, .button-container, .main-content .float-emoji, .main-content .sticky-notes-container').forEach(el => {
+                    el.style.display = '';
+                });
+            }
+            
+            document.querySelector('.hero .name').textContent = siteData.herName;
+            document.getElementById('introName').textContent = siteData.herName;
+            
+            // Love Letter
+            const letterContent = document.querySelector('.letter-content');
+            if (letterContent && siteData.loveLetter) {
+                letterContent.innerHTML = siteData.loveLetter.replace(/\n/g, '<br>');
+            }
+            
+            // Reasons
+            const reasonsList = document.querySelectorAll('.cute-list')[0];
+            if (reasonsList) {
+                reasonsList.innerHTML = siteData.reasons.map(r => `<li><span class="icon">${r.icon}</span> ${r.text}</li>`).join('');
+            }
+            
+            // Bucket List
+            const bucketList = document.querySelectorAll('.cute-list')[1];
+            if (bucketList) {
+                bucketList.innerHTML = siteData.bucketList.map(b => `<li><span class="icon">${b.icon}</span> ${b.text}</li>`).join('');
+            }
+            
+            // Promises
+            const promisesList = document.querySelectorAll('.cute-list')[2];
+            if (promisesList) {
+                promisesList.innerHTML = siteData.promises.map(p => `<li><span class="icon">${p.icon}</span> ${p.text}</li>`).join('');
+            }
+            
+            // Favorite Things
+            const favList = document.querySelectorAll('.cute-list')[3];
+            if (favList) {
+                favList.innerHTML = siteData.favoriteThings.map(f => `<li><span class="icon">${f.icon}</span> ${f.text}</li>`).join('');
+            }
+            
+            // Timeline
+            const timeline = document.querySelector('.timeline');
+            if (timeline) {
+                timeline.innerHTML = siteData.timeline.map(t => `<div class="timeline-item"><div class="date">${t.date}</div><div class="event">${t.event}</div></div>`).join('');
+            }
+            
+            // Click Reveal
+            const hiddenMsg = document.querySelector('#hiddenMessage p');
+            if (hiddenMsg && siteData.clickRevealMessage) {
+                hiddenMsg.innerHTML = siteData.clickRevealMessage.replace(/\n/g, '<br><br>');
+            }
+            
+            // Surprise
+            document.querySelector('#surprise h3').textContent = siteData.surpriseTitle;
+            document.querySelector('#surprise p').innerHTML = siteData.surpriseMessage.replace(/\n/g, '<br><br>');
+
+            // Sticky Notes
+            renderStickyNotes();
+            
+            // Re-check countdown after content loads
+            updateBirthdayCountdown();
+        }
+
+        function renderStickyNotes() {
+            const container = document.getElementById('stickyNotesContainer');
+            container.innerHTML = '';
+            if (siteData.stickyNotes && siteData.stickyNotes.length > 0) {
+                siteData.stickyNotes.forEach((note, index) => {
+                    const noteEl = document.createElement('div');
+                    noteEl.className = `sticky-note ${note.color}`;
+                    noteEl.style.top = note.top;
+                    noteEl.style.left = note.left;
+                    
+                    let content = '';
+                    if (note.image) {
+                        content += `<img src="${note.image}" style="width:100%;height:80px;object-fit:cover;border-radius:5px;margin-bottom:8px;">`;
+                    }
+                    if (note.text) {
+                        content += note.text;
+                    }
+                    noteEl.innerHTML = content;
+                    noteEl.addEventListener('click', function(e) {
+                        createHeartBlast(e.clientX, e.clientY);
+                    });
+                    container.appendChild(noteEl);
+                });
+            }
+        }
+
+        // Background Animation
+        function createBackground() {
+            const bg = document.getElementById('bgAnimation');
+            const emojis = ['🌸', '✨', '💕', '🌺', '💖', '🦋', '🌻', '🌷', '⭐', '💫'];
+            
+            for (let i = 0; i < 15; i++) {
+                const item = document.createElement('div');
+                item.className = 'floating-item';
+                item.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+                item.style.left = Math.random() * 100 + '%';
+                item.style.fontSize = (1.5 + Math.random() * 1.5) + 'rem';
+                item.style.animationDuration = (8 + Math.random() * 8) + 's';
+                item.style.animationDelay = Math.random() * 5 + 's';
+                bg.appendChild(item);
+            }
+        }
+
+        // Floating Hearts
+        function createHeart() {
+            const container = document.getElementById('heartsContainer');
+            const heart = document.createElement('div');
+            heart.className = 'floating-heart';
+            heart.innerHTML = ['💖', '💕', '💗', '❤️', '💘', '💝'][Math.floor(Math.random() * 6)];
+            heart.style.left = Math.random() * 100 + 'vw';
+            heart.style.fontSize = (1 + Math.random() * 1.5) + 'rem';
+            heart.style.animationDuration = (4 + Math.random() * 4) + 's';
+            container.appendChild(heart);
+            setTimeout(() => heart.remove(), 8000);
+        }
+
+        // Notification
+        function showNotification() {
+            let messages = [];
+            if (siteData.sweetMessage && siteData.sweetMessage.trim()) {
+                messages = siteData.sweetMessage.split('\n').filter(m => m.trim());
+            }
+            if (messages.length === 0) {
+                messages = ["I love you! 💕", "You're amazing! ✨", "My heart beats for you! 💖"];
+            }
+            const notif = document.getElementById('notification');
+            const text = document.getElementById('notifText');
+            text.textContent = messages[Math.floor(Math.random() * messages.length)];
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 3000);
+        }
+
+        // Countdown
+        let birthdayExploded = false;
+        function createBirthdayExplosion() {
+            if (birthdayExploded) return;
+            birthdayExploded = true;
+            
+            const effects = ['💖', '💕', '💗', '💘', '❤️', '💝', '✨', '⭐', '🎈', '🎉', '🎊', '🌟', '💫'];
+            
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const effect = document.createElement('div');
+                    effect.textContent = effects[Math.floor(Math.random() * effects.length)];
+                    effect.style.cssText = `
+                        position: fixed;
+                        left: ${Math.random() * 100}%;
+                        top: ${Math.random() * 100}%;
+                        font-size: ${1 + Math.random() * 2}rem;
+                        z-index: 99999;
+                        pointer-events: none;
+                        animation: explodeEffect ${1 + Math.random()}s ease-out forwards;
+                    `;
+                    document.body.appendChild(effect);
+                    setTimeout(() => effect.remove(), 2000);
+                }, i * 50);
+            }
+            
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    const colors = ['#ff6b8a', '#ff9eb5', '#ffeb3b', '#88ff88', '#cc88ff', '#ff69b4', '#00bfff'];
+                    confetti.style.cssText = `
+                        position: fixed;
+                        left: ${Math.random() * 100}%;
+                        top: -20px;
+                        width: ${5 + Math.random() * 10}px;
+                        height: ${5 + Math.random() * 10}px;
+                        background: ${colors[Math.floor(Math.random() * colors.length)]};
+                        border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+                        z-index: 99998;
+                        pointer-events: none;
+                        animation: confettiRain ${2 + Math.random() * 2}s ease-out forwards;
+                    `;
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 4000);
+                }, i * 80);
+            }
+            
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    blowBallons();
+                }, i * 200);
+            }
+            
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    createShootingStar();
+                    createShootingStar();
+                }, i * 300);
+            }
+        }
+
+        function updateBirthdayCountdown() {
+            const birthday = new Date(siteData.birthdayDate + ' ' + (siteData.birthdayTime || '00:00:00')).getTime();
+            const now = new Date().getTime();
+            const distance = birthday - now;
+
+            if (distance > 0) {
+                document.getElementById('days').textContent = Math.floor(distance / (1000 * 60 * 60 * 24));
+                document.getElementById('hours').textContent = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                document.getElementById('minutes').textContent = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                document.getElementById('seconds').textContent = Math.floor((distance % (1000 * 60)) / 1000);
+            } else {
+                // Birthday arrived - only celebrate once
+                if (!birthdayExploded && !sessionStorage.getItem('birthdayCelebrated')) {
+                    birthdayExploded = true;
+                    sessionStorage.setItem('birthdayCelebrated', 'true');
+                    document.querySelector('.countdown-only').innerHTML = `
+                        <div class="birthday-celebration">
+                            <h2>🎉 Happy Birthday! 🎉</h2>
+                            <div class="cake-large">🎂</div>
+                            <p style="font-size:1.5rem;margin-top:20px;font-family:'Dancing Script',cursive;color:var(--dark-pink);">Wishing you all the happiness in the world! 💕</p>
+                        </div>
+                    `;
+                    createBirthdayExplosion();
+                }
+            }
+        }
+
+        function updateTogetherDays() {
+            const metDate = new Date(siteData.startDate + ' ' + (siteData.startTime || '00:00:00')).getTime();
+            const now = new Date().getTime();
+            document.getElementById('togetherDays').textContent = Math.max(0, Math.floor((now - metDate) / (1000 * 60 * 60 * 24)));
+        }
+
+        function updateMeetCountdown() {
+            const meetDate = new Date(siteData.meetDate + ' ' + (siteData.meetTime || '12:00:00')).getTime();
+            const now = new Date().getTime();
+            const distance = meetDate - now;
+
+            if (distance > 0) {
+                document.getElementById('meetDays').textContent = Math.floor(distance / (1000 * 60 * 60 * 24));
+                document.getElementById('meetHours').textContent = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                document.getElementById('meetMinutes').textContent = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                document.getElementById('meetSeconds').textContent = Math.floor((distance % (1000 * 60)) / 1000);
+                document.getElementById('meetCountdown').classList.add('show');
+            }
+        }
+
+        // Love Meter
+        function animateLoveMeter() {
+            const meter = document.getElementById('loveMeter');
+            const percentText = document.getElementById('lovePercent');
+            
+            if (!meter || !percentText) {
+                setTimeout(animateLoveMeter, 200);
+                return;
+            }
+            
+            const targetPercent = 100;
+            
+            meter.style.width = '0%';
+            percentText.textContent = '0%';
+            percentText.style.fontSize = '1.3rem';
+            
+            let current = 0;
+            
+            function tick() {
+                current++;
+                meter.style.width = current + '%';
+                percentText.textContent = current + '%';
+                
+                if (current < targetPercent) {
+                    setTimeout(tick, 30);
+                } else {
+                    percentText.textContent = '∞';
+                    percentText.style.fontSize = '2rem';
+                }
+            }
+            
+            tick();
+        }
+
+        // Functions
+        function revealMessage() {
+            document.getElementById('hiddenMessage').style.display = 'block';
+        }
+
+        function showSurprise() {
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('surprise').style.display = 'block';
+            for (let i = 0; i < 10; i++) setTimeout(createHeart, i * 100);
+        }
+
+        function hideSurprise() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('surprise').style.display = 'none';
+        }
+
+        function blowBallons() {
+            const container = document.getElementById('balloonsContainer');
+            const balloons = ['🎈', '🎈', '🎈', '🎈', '🎈'];
+            const colors = ['#ff6b8a', '#ff9eb5', '#ffeb3b', '#88ff88', '#cc88ff'];
+            
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    const balloon = document.createElement('div');
+                    balloon.className = 'balloon';
+                    balloon.textContent = balloons[Math.floor(Math.random() * balloons.length)];
+                    balloon.style.left = (10 + Math.random() * 80) + '%';
+                    balloon.style.fontSize = (2.5 + Math.random() * 2) + 'rem';
+                    container.appendChild(balloon);
+                    
+                    setTimeout(() => {
+                        for (let j = 0; j < 10; j++) {
+                            const confetti = document.createElement('div');
+                            confetti.style.cssText = `
+                                position: fixed;
+                                left: ${balloon.style.left};
+                                top: 10%;
+                                width: 12px;
+                                height: 12px;
+                                background: ${colors[Math.floor(Math.random() * colors.length)]};
+                                border-radius: 50%;
+                                z-index: 9999;
+                                pointer-events: none;
+                                animation: confettiFall 1.5s ease-out forwards;
+                            `;
+                            const angle = (j / 10) * Math.PI * 2;
+                            confetti.style.setProperty('--tx', Math.cos(angle) * 150 + 'px');
+                            confetti.style.setProperty('--ty', Math.sin(angle) * 150 + 50 + 'px');
+                            document.body.appendChild(confetti);
+                            setTimeout(() => confetti.remove(), 1500);
+                        }
+                        balloon.remove();
+                    }, 5500);
+                }, i * 300);
+            }
+        }
+
+        function showInfo() {
+            const content = document.getElementById('infoContent');
+            content.innerHTML = siteData.herInfo.map(item => 
+                `<div class="info-item"><span class="label">${item.label}</span><span class="value">${item.value}</span></div>`
+            ).join('');
+            document.getElementById('infoOverlay').style.display = 'block';
+            document.getElementById('infoPopup').style.display = 'block';
+        }
+
+        function hideInfo() {
+            document.getElementById('infoOverlay').style.display = 'none';
+            document.getElementById('infoPopup').style.display = 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.info-popup .close-info').addEventListener('click', function(e) {
+                e.stopPropagation();
+                hideInfo();
+            });
+            
+            document.getElementById('audioPlayer').addEventListener('timeupdate', function() {
+                const currentTime = this.currentTime;
+                const floatingLyrics = document.getElementById('floatingLyrics');
+                
+                if (!parsedLyrics || parsedLyrics.length === 0) {
+                    floatingLyrics.classList.remove('show');
+                    return;
+                }
+                
+                for (let i = parsedLyrics.length - 1; i >= 0; i--) {
+                    if (currentTime >= parsedLyrics[i].time) {
+                        floatingLyrics.textContent = parsedLyrics[i].text;
+                        floatingLyrics.classList.add('show');
+                        break;
+                    }
+                }
+            });
+        });
+
+        let musicPlaying = false;
+        
+        function isYouTubeUrl(url) {
+            if (!url) return false;
+            return url.includes('youtube.com') || url.includes('youtu.be');
+        }
+        
+        function getYouTubeVideoId(url) {
+            if (!url) return null;
+            url = url.trim();
+            let match = url.match(/\/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+            if (match) return match[1];
+            match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+            if (match) return match[1];
+            return null;
+        }
+        
+        function toggleMusic() {
+            const btn = document.getElementById('musicBtn');
+            const audio = document.getElementById('audioPlayer');
+            
+            if (!siteData || !siteData.songUrl) {
+                alert('Please add a song in admin panel first!');
+                return;
+            }
+            
+            // Hide YouTube if open
+            const ytContainer = document.getElementById('youtubeContainer');
+            ytContainer.style.display = 'none';
+            
+            if (audio.src !== siteData.songUrl) {
+                audio.src = siteData.songUrl;
+                audio.loop = true;
+                audio.volume = 0.5;
+            }
+            
+            if (musicPlaying) {
+                audio.pause();
+                btn.textContent = '🎵';
+            } else {
+                audio.play().catch(() => alert('Could not play audio!'));
+                btn.textContent = '🔊';
+            }
+            musicPlaying = !musicPlaying;
+        }
+
+        // Music Player Functions
+        let musicPlayerOpen = false;
+        let musicProgressInterval = null;
+
+        function openMusicPlayer() {
+            const modal = document.getElementById('musicModal');
+            const overlay = document.getElementById('musicOverlay');
+            
+            if (!siteData.songUrl) {
+                document.getElementById('musicTrackTitle').textContent = 'No Song Added';
+                document.getElementById('musicTrackArtist').textContent = 'Add a song in admin panel';
+                document.getElementById('musicAlbumArt').textContent = '🎵';
+            } else {
+                document.getElementById('musicTrackTitle').textContent = siteData.songTitle || 'Your Song';
+                document.getElementById('musicTrackArtist').textContent = '🎶 Special Song For You';
+                document.getElementById('musicAlbumArt').textContent = '💕';
+            }
+            
+            modal.style.display = 'block';
+            overlay.style.display = 'block';
+            musicPlayerOpen = true;
+            
+            const audio = document.getElementById('audioPlayer');
+            if (audio.src !== siteData.songUrl && siteData.songUrl) {
+                audio.src = siteData.songUrl;
+                audio.loop = true;
+                audio.volume = 0.5;
+            }
+            
+            if (siteData.songUrl) {
+                loadLyrics();
+                const audio = document.getElementById('audioPlayer');
+                if (!audio.paused) {
+                    syncLyrics();
+                    startProgressTracking();
+                }
+            }
+            
+            updatePlayButton();
+        }
+
+        function closeMusicPlayer() {
+            document.getElementById('musicModal').style.display = 'none';
+            document.getElementById('musicOverlay').style.display = 'none';
+            musicPlayerOpen = false;
+            if (musicProgressInterval) {
+                clearInterval(musicProgressInterval);
+                musicProgressInterval = null;
+            }
+        }
+
+        function parseLRC(lrcText) {
+            const lines = lrcText.split('\n');
+            const parsed = [];
+            const timeRegex = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/;
+            
+            for (const line of lines) {
+                const match = line.match(timeRegex);
+                if (match) {
+                    const minutes = parseInt(match[1]);
+                    const seconds = parseInt(match[2]);
+                    const ms = match[3] ? (match[3].length === 2 ? parseInt(match[3]) * 10 : parseInt(match[3])) : 0;
+                    const time = minutes * 60 + seconds + ms / 1000;
+                    const text = line.replace(timeRegex, '').trim();
+                    if (text) {
+                        parsed.push({ time, text });
+                    }
+                }
+            }
+            return parsed.sort((a, b) => a.time - b.time);
+        }
+
+        function loadLyrics() {
+            const lyricsContainer = document.getElementById('musicLyrics');
+            if (siteData.songLyrics && siteData.songLyrics.trim()) {
+                parsedLyrics = parseLRC(siteData.songLyrics);
+                if (parsedLyrics.length > 0) {
+                    lyricsContainer.innerHTML = parsedLyrics.map(line => `<p data-time="${line.time}">${line.text}</p>`).join('');
+                } else {
+                    const lines = siteData.songLyrics.split('\n').filter(line => line.trim());
+                    lyricsContainer.innerHTML = lines.map(line => `<p>${line}</p>`).join('');
+                }
+            } else {
+                lyricsContainer.innerHTML = '<p>No lyrics available</p>';
+            }
+        }
+
+        function syncLyrics() {
+            const audio = document.getElementById('audioPlayer');
+            const lyricsContainer = document.getElementById('musicLyrics');
+            const currentTime = audio.currentTime;
+            const paragraphs = lyricsContainer.querySelectorAll('p');
+            
+            paragraphs.forEach(p => p.classList.remove('active'));
+            
+            for (let i = parsedLyrics.length - 1; i >= 0; i--) {
+                if (currentTime >= parsedLyrics[i].time) {
+                    if (paragraphs[i]) {
+                        paragraphs[i].classList.add('active');
+                        paragraphs[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    break;
+                }
+            }
+        }
+
+        function toggleMusicPlay() {
+            const audio = document.getElementById('audioPlayer');
+            const playBtn = document.getElementById('musicPlayBtn');
+            const albumArt = document.getElementById('musicAlbumArt');
+            const ytContainer = document.getElementById('youtubeContainer');
+            
+            if (!siteData || !siteData.songUrl) {
+                alert('Please add a song in admin panel first!');
+                return;
+            }
+            
+            // Hide YouTube if open
+            ytContainer.style.display = 'none';
+            
+            if (audio.paused) {
+                audio.play().then(() => {
+                    playBtn.textContent = '⏸️';
+                    albumArt.classList.add('playing');
+                    startProgressTracking();
+                }).catch(() => alert('Could not play audio!'));
+            } else {
+                audio.pause();
+                playBtn.textContent = '▶️';
+                albumArt.classList.remove('playing');
+                if (musicProgressInterval) {
+                    clearInterval(musicProgressInterval);
+                    musicProgressInterval = null;
+                }
+            }
+        }
+
+        function updatePlayButton() {
+            const audio = document.getElementById('audioPlayer');
+            const playBtn = document.getElementById('musicPlayBtn');
+            const albumArt = document.getElementById('musicAlbumArt');
+            if (audio.paused) {
+                playBtn.textContent = '▶️';
+                albumArt.classList.remove('playing');
+            } else {
+                playBtn.textContent = '⏸️';
+                albumArt.classList.add('playing');
+            }
+        }
+
+        function startProgressTracking() {
+            if (musicProgressInterval) clearInterval(musicProgressInterval);
+            musicProgressInterval = setInterval(() => {
+                const audio = document.getElementById('audioPlayer');
+                if (audio.duration) {
+                    const progress = (audio.currentTime / audio.duration) * 100;
+                    document.getElementById('musicProgressFill').style.width = progress + '%';
+                    document.getElementById('musicCurrentTime').textContent = formatTime(audio.currentTime);
+                    document.getElementById('musicDuration').textContent = formatTime(audio.duration);
+                    if (parsedLyrics.length > 0) syncLyrics();
+                }
+            }, 100);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        function seekMusic(event) {
+            const audio = document.getElementById('audioPlayer');
+            const progressBar = document.getElementById('musicProgressBar');
+            if (!audio.duration) return;
+            const rect = progressBar.getBoundingClientRect();
+            const percent = (event.clientX - rect.left) / rect.width;
+            audio.currentTime = percent * audio.duration;
+        }
+
+        function prevTrack() {
+            const audio = document.getElementById('audioPlayer');
+            audio.currentTime = 0;
+        }
+
+        function nextTrack() {
+            const audio = document.getElementById('audioPlayer');
+            audio.currentTime = 0;
+        }
+
+        function toggleMute() {
+            const audio = document.getElementById('audioPlayer');
+            const volumeBtn = document.querySelector('.music-volume-btn');
+            if (audio.muted || audio.volume === 0) {
+                audio.muted = false;
+                audio.volume = 0.5;
+                volumeBtn.textContent = '🔊';
+                document.getElementById('musicVolumeFill').style.width = '50%';
+            } else {
+                audio.muted = true;
+                volumeBtn.textContent = '🔇';
+                document.getElementById('musicVolumeFill').style.width = '0%';
+            }
+        }
+
+        function setVolume(event) {
+            const audio = document.getElementById('audioPlayer');
+            const volumeSlider = document.getElementById('musicVolumeSlider');
+            const rect = volumeSlider.getBoundingClientRect();
+            const percent = (event.clientX - rect.left) / rect.width;
+            audio.volume = Math.max(0, Math.min(1, percent));
+            document.getElementById('musicVolumeFill').style.width = (percent * 100) + '%';
+            document.querySelector('.music-volume-btn').textContent = percent === 0 ? '🔇' : '🔊';
+            audio.muted = false;
+        }
+
+        // Intro Animation
+        function createIntroBgElements() {
+            const container = document.getElementById('introBgElements');
+            const emojis = ['💕', '💖', '💗', '❤️', '💘', '💝', '✨', '🌸', '🌺', '🦋', '⭐', '💫'];
+            
+            for (let i = 0; i < 20; i++) {
+                const el = document.createElement('div');
+                el.className = 'intro-float';
+                el.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+                el.style.left = Math.random() * 100 + '%';
+                el.style.top = Math.random() * 100 + '%';
+                el.style.animationDelay = Math.random() * 3 + 's';
+                el.style.animationDuration = (4 + Math.random() * 4) + 's';
+                el.style.fontSize = (1.5 + Math.random() * 1.5) + 'rem';
+                container.appendChild(el);
+            }
+
+            for (let i = 0; i < 25; i++) {
+                const star = document.createElement('div');
+                star.className = 'intro-star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 2 + 's';
+                star.style.width = (4 + Math.random() * 6) + 'px';
+                star.style.height = star.style.width;
+                container.appendChild(star);
+            }
+        }
+
+        function createIntroSparkles() {
+            const container = document.getElementById('introSparkles');
+            
+            for (let i = 0; i < 30; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                sparkle.style.left = Math.random() * 100 + '%';
+                sparkle.style.top = Math.random() * 100 + '%';
+                sparkle.style.animationDelay = Math.random() * 2 + 's';
+                sparkle.style.animationDuration = (1 + Math.random() * 1) + 's';
+                sparkle.style.width = (3 + Math.random() * 8) + 'px';
+                sparkle.style.height = sparkle.style.width;
+                container.appendChild(sparkle);
+            }
+        }
+
+        let introHidden = false;
+        let dataLoaded = false;
+        let musicAutoPlayed = false;
+        
+        async function loadData() {
+            console.log('Loading data...');
+            console.log('Supabase client:', supabaseClient);
+            
+            // If supabaseClient is null, try localStorage directly
+            if (!supabaseClient) {
+                console.log('No Supabase client, loading from localStorage');
+                const saved = localStorage.getItem('birthdayData');
+                if (saved) {
+                    siteData = { ...defaultData, ...JSON.parse(saved) };
+                }
                 dataLoaded = true;
-                document.getElementById('mainContent').classList.add('loaded');
+                renderContent();
+                tryAutoPlayMusic();
+                return;
+            }
+            
+            try {
+                console.log('Fetching from Supabase...');
+                const { data, error } = await supabaseClient
+                    .from('birthday_data')
+                    .select('data')
+                    .eq('id', 1)
+                    .single();
+                    
+                console.log('Supabase response:', data, error);
+                
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw error;
+                }
+                
+                if (data && data.data && Object.keys(data.data).length > 0) {
+                    console.log('Got data from Supabase, updating siteData');
+                    siteData = { ...defaultData, ...data.data };
+                    
+                    // Also save to localStorage for backup
+                    try {
+                        localStorage.setItem('birthdayData', JSON.stringify(siteData));
+                    } catch(e) { console.log('localStorage save failed'); }
+                }
+                
+                dataLoaded = true;
+                console.log('songUrl loaded:', siteData.songUrl);
+                console.log('songLyrics loaded:', siteData.songLyrics ? 'yes' : 'no');
+                
+                supabaseClient
+                    .channel('birthday_changes')
+                    .on('postgres_changes', 
+                        { event: '*', schema: 'public', table: 'birthday_data' },
+                        (payload) => {
+                            console.log('Real-time update received:', payload);
+                            if (payload.new && payload.new.data) {
+                                siteData = { ...defaultData, ...payload.new.data };
+                                renderContent();
+                            }
+                        }
+                    )
+                    .subscribe();
+                    
+                renderContent();
+                tryAutoPlayMusic();
+            } catch (e) {
+                console.error('Error loading data:', e);
+                // Fallback to localStorage
+                try {
+                    const saved = localStorage.getItem('birthdayData');
+                    if (saved) {
+                        console.log('Loading from localStorage fallback');
+                        siteData = { ...defaultData, ...JSON.parse(saved) };
+                    }
+                } catch(e) { console.log('localStorage read failed'); }
+                dataLoaded = true;
                 renderContent();
                 tryAutoPlayMusic();
             }
         }
+
+        function hideIntro() {
+            if (introHidden) return;
+            introHidden = true;
+            document.getElementById('intro').classList.add('hidden');
+            document.getElementById('mainContent').classList.add('visible');
+            animateLoveMeter();
+            setTimeout(() => {
+                document.getElementById('intro').style.display = 'none';
+                startMainAnimations();
+                renderContent();
+                tryAutoPlayMusic();
+            }, 1000);
+        }
+
+        function tryAutoPlayMusic() {
+            if (musicAutoPlayed) return;
+            if (!siteData.songUrl) {
+                console.log('No song URL available');
+                return;
+            }
+            console.log('Auto playing music...');
+            musicAutoPlayed = true;
+            
+            if (isYouTubeUrl(siteData.songUrl)) {
+                const videoId = getYouTubeVideoId(siteData.songUrl);
+                if (videoId) {
+                    const iframe = document.getElementById('youtubePlayer');
+                    const ytContainer = document.getElementById('youtubeContainer');
+                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
+                    ytContainer.style.display = 'block';
+                }
+            } else {
+                const audio = document.getElementById('audioPlayer');
+                audio.src = siteData.songUrl;
+                audio.loop = true;
+                audio.volume = 0.5;
+                audio.play().catch(e => console.log('Autoplay failed:', e));
+            }
+            
+            // Initialize floating lyrics
+            if (siteData.songLyrics && siteData.songLyrics.trim()) {
+                parsedLyrics = parseLRC(siteData.songLyrics);
+                const floatingLyrics = document.getElementById('floatingLyrics');
+                floatingLyrics.style.display = 'block';
+            }
+        }
         
         loadData();
-
-        function startMainAnimations() {
 
         function startMainAnimations() {
             if (mainAnimationsRunning) return;
