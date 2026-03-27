@@ -636,27 +636,6 @@
             transform: scale(1.1);
         }
 
-        /* Letter Button */
-        .letter-btn {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #9b59b6, #8e44ad);
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
-            z-index: 10000;
-            font-size: 1.3rem;
-            transition: all 0.3s;
-        }
-
-        .letter-btn:hover {
-            transform: scale(1.1);
-        }
-
         .music-btn:hover {
             transform: scale(1.1);
         }
@@ -1215,51 +1194,6 @@
         .floating-lyrics.show {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
-        }
-
-        /* Letter Modal */
-        .letter-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 10000;
-        }
-        .letter-modal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            z-index: 10000;
-            overflow-y: auto;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-        .letter-modal-close {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            font-size: 1.5rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #ff6b8a;
-        }
-        .letter-modal-content {
-            font-family: Arial, sans-serif;
-            font-size: 1.1rem;
-            line-height: 1.8;
-            color: #333;
-            white-space: pre-wrap;
         }
 
         /* Countdown to Meet */
@@ -2747,7 +2681,7 @@
     </div>
 
     <button class="music-btn" onclick="openMusicPlayer()" id="musicBtn">🎵</button>
-    <button class="letter-btn" onclick="openLetterModal()" id="letterBtn">✉️</button>
+
     <button class="info-btn" onclick="showInfo()" id="infoBtn">ℹ️</button>
 
     <div class="music-modal-overlay" id="musicOverlay" onclick="closeMusicPlayer()"></div>
@@ -2765,12 +2699,6 @@
             <iframe id="youtubePlayer" width="100%" height="300" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
         </div>
         
-        <!-- Letter Modal -->
-        <div class="letter-modal-overlay" id="letterModalOverlay" onclick="closeLetterModal()"></div>
-        <div class="letter-modal" id="letterModal">
-            <button class="letter-modal-close" onclick="closeLetterModal()">✕</button>
-            <div class="letter-modal-content" id="letterModalContent"></div>
-        </div>
         <div class="music-progress-container">
             <div class="music-progress-bar" id="musicProgressBar" onclick="seekMusic(event)">
                 <div class="music-progress-fill" id="musicProgressFill"></div>
@@ -3468,9 +3396,6 @@ Forever yours, 💖`,
         let musicProgressInterval = null;
 
         function openMusicPlayer() {
-            // Close letter modal first if open
-            closeLetterModal();
-            
             const modal = document.getElementById('musicModal');
             const overlay = document.getElementById('musicOverlay');
             
@@ -3515,22 +3440,6 @@ Forever yours, 💖`,
                 clearInterval(musicProgressInterval);
                 musicProgressInterval = null;
             }
-        }
-
-        function openLetterModal() {
-            // Close music player first if open
-            closeMusicPlayer();
-            console.log('openLetterModal called');
-            console.log('siteData.loveLetter:', siteData.loveLetter);
-            const content = document.getElementById('letterModalContent');
-            content.textContent = siteData.loveLetter || 'No letter available';
-            document.getElementById('letterModal').style.display = 'block';
-            document.getElementById('letterModalOverlay').style.display = 'block';
-        }
-
-        function closeLetterModal() {
-            document.getElementById('letterModal').style.display = 'none';
-            document.getElementById('letterModalOverlay').style.display = 'none';
         }
 
         function parseLRC(lrcText) {
@@ -3743,6 +3652,8 @@ Forever yours, 💖`,
         }
 
         let introHidden = false;
+        let dataLoaded = false;
+        
         function hideIntro() {
             if (introHidden) return;
             introHidden = true;
@@ -3753,34 +3664,26 @@ Forever yours, 💖`,
                 document.getElementById('intro').style.display = 'none';
                 startMainAnimations();
                 renderContent();
-                if (siteData.songUrl) {
-                    // Check if YouTube
-                    if (isYouTubeUrl(siteData.songUrl)) {
-                        const videoId = getYouTubeVideoId(siteData.songUrl);
-                        if (videoId) {
-                            const iframe = document.getElementById('youtubePlayer');
-                            const ytContainer = document.getElementById('youtubeContainer');
-                            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
-                            ytContainer.style.display = 'block';
-                            document.getElementById('musicPlayBtn').textContent = '⏸️';
+                // Auto play music after intro
+                setTimeout(() => {
+                    if (siteData.songUrl) {
+                        if (isYouTubeUrl(siteData.songUrl)) {
+                            const videoId = getYouTubeVideoId(siteData.songUrl);
+                            if (videoId) {
+                                const iframe = document.getElementById('youtubePlayer');
+                                const ytContainer = document.getElementById('youtubeContainer');
+                                iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
+                                ytContainer.style.display = 'block';
+                            }
+                        } else {
+                            const audio = document.getElementById('audioPlayer');
+                            audio.src = siteData.songUrl;
+                            audio.loop = true;
+                            audio.volume = 0.5;
+                            audio.play().catch(e => console.log('Autoplay failed:', e));
                         }
-                    } else {
-                        // Regular audio
-                        const audio = document.getElementById('audioPlayer');
-                        audio.src = siteData.songUrl;
-                        audio.loop = true;
-                        audio.volume = 0.5;
-                        audio.play().catch(() => {});
-                        document.getElementById('musicPlayBtn').textContent = '⏸️';
-                        startProgressTracking();
                     }
-                    if (siteData.songLyrics && siteData.songLyrics.trim()) {
-                        parsedLyrics = parseLRC(siteData.songLyrics);
-                        // Initialize floating lyrics
-                        const floatingLyrics = document.getElementById('floatingLyrics');
-                        floatingLyrics.style.display = 'block';
-                    }
-                }
+                }, 500);
             }, 1000);
         }
 
