@@ -19,10 +19,6 @@
             box-sizing: border-box;
         }
 
-        /* Hide main content until loaded */
-        .main-content { opacity: 0; transition: opacity 0.3s ease; }
-        .main-content.loaded { opacity: 1; }
-
         :root {
             --soft-pink: #ffcde0;
             --pink: #ff9eb5;
@@ -2898,7 +2894,7 @@ Forever yours, 💖`,
                 if (saved) {
                     siteData = { ...defaultData, ...JSON.parse(saved) };
                 }
-                document.getElementById('mainContent').classList.add('loaded');
+                
                 renderContent();
                 return;
             }
@@ -2932,7 +2928,7 @@ Forever yours, 💖`,
                     )
                     .subscribe();
                     
-                document.getElementById('mainContent').classList.add('loaded');
+                
                 renderContent();
             } catch (e) {
                 try {
@@ -2941,7 +2937,7 @@ Forever yours, 💖`,
                         siteData = { ...defaultData, ...JSON.parse(saved) };
                     }
                 } catch(e) {}
-                document.getElementById('mainContent').classList.add('loaded');
+                
                 renderContent();
             }
         }
