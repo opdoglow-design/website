@@ -19,6 +19,10 @@
             box-sizing: border-box;
         }
 
+        /* Hide main content until loaded */
+        .main-content { opacity: 0; transition: opacity 0.3s ease; }
+        .main-content.loaded { opacity: 1; }
+
         :root {
             --soft-pink: #ffcde0;
             --pink: #ff9eb5;
@@ -2075,7 +2079,15 @@
         </style>
 
         <script>
+            let loveInterval = null;
+            
             function calculateLove() {
+                // Clear any existing interval
+                if (loveInterval) {
+                    clearInterval(loveInterval);
+                    loveInterval = null;
+                }
+                
                 const name1 = document.getElementById('name1').value.trim();
                 const name2 = document.getElementById('name2').value.trim();
                 const resultDiv = document.getElementById('calcResult');
@@ -2088,71 +2100,76 @@
                     return;
                 }
 
-                let targetPercent;
-                let isNegative = false;
+                let targetPercent = 0;
                 let showRainbow = false;
                 let showInfinity = false;
+                let showBegone = false;
                 const nameLower = name1.toLowerCase();
                 
-                if (nameLower === 'turjo') {
+                // Special cases
+                if (nameLower === 'turjo' || nameLower.includes('muhid') || nameLower.includes('muhi') || nameLower.includes('turjo')) {
+                    // Muhid Al Hasan Turjo -> Infinite
                     showInfinity = true;
-                } else if (nameLower === 'safat') {
-                    targetPercent = -999;
-                    isNegative = true;
-                } else if (nameLower === 'odhora') {
-                    targetPercent = 0;
-                    showRainbow = true;
-                } else if (nameLower.includes('muhid') || nameLower.includes('muhi')) {
                     targetPercent = 100;
+                } else if (nameLower === 'safat') {
+                    // Safat -> -999%
+                    showBegone = true;
+                    targetPercent = 0;
+                } else if (nameLower === 'odhora' || nameLower === 'anjum') {
+                    // Odhora & Anjum -> Rainbow flag
+                    showRainbow = true;
+                    targetPercent = 0;
                 } else {
+                    // Normal calculation for others (0-10%)
                     let combined = (name1 + name2).toLowerCase();
                     let hash = 0;
                     for (let i = 0; i < combined.length; i++) {
                         hash = ((hash << 5) - hash) + combined.charCodeAt(i);
                         hash = hash & hash;
                     }
-                    targetPercent = Math.abs(hash % 9) + 1;
+                    targetPercent = Math.abs(hash % 11);
                 }
 
                 resultDiv.classList.add('show');
 
                 let currentPercent = 0;
-                let finalPercent = targetPercent || (showInfinity ? '∞' : 0);
-                let increment = targetPercent / 50;
+                const finalPercent = targetPercent;
+                const duration = 2000;
+                const steps = 60;
+                const increment = targetPercent / steps;
+                let step = 0;
 
-                let interval = setInterval(() => {
-                    currentPercent += increment;
-                    if (isNegative) {
-                        if (currentPercent <= targetPercent) {
-                            currentPercent = targetPercent;
-                            clearInterval(interval);
-                        }
-                    } else if (showInfinity) {
-                        currentPercent = 100;
+                loveInterval = setInterval(() => {
+                    step++;
+                    currentPercent = Math.min(Math.round((step / steps) * targetPercent), targetPercent);
+                    
+                    if (showInfinity) {
                         percentDiv.textContent = '∞';
                         percentDiv.style.fontSize = '3.5rem';
-                    } else {
-                        if (currentPercent >= targetPercent) {
-                            currentPercent = targetPercent;
-                            clearInterval(interval);
-                        }
-                    }
-                    if (showRainbow) {
+                    } else if (showRainbow) {
                         percentDiv.textContent = '🏳️‍🌈';
                         percentDiv.style.fontSize = '3rem';
-                    } else if (!showInfinity) {
-                        percentDiv.textContent = Math.round(currentPercent) + '%';
+                    } else if (showBegone) {
+                        percentDiv.textContent = '-999%';
+                        percentDiv.style.fontSize = '2.5rem';
+                        percentDiv.style.color = '#ff0000';
+                    } else {
+                        percentDiv.textContent = currentPercent + '%';
                         percentDiv.style.fontSize = '3rem';
+                        percentDiv.style.color = '';
                     }
-                }, 20);
+                    
+                    if (step >= steps || currentPercent >= targetPercent) {
+                        clearInterval(loveInterval);
+                        loveInterval = null;
+                    }
+                }, duration / steps);
 
                 const messages = [
-                    { min: -1000, max: -500, msg: "Get lost! 💢" },
-                    { min: 0, max: 0, msg: "🏳️‍🌈 Ayien? 🏳️‍🌈" },
-                    { min: 1, max: 10, msg: "Not a chance... 💭" },
+                    { min: 0, max: 10, msg: "Not a chance... 💭" },
                     { min: 11, max: 30, msg: "Just friends... for now? 💭" },
                     { min: 31, max: 50, msg: "There's a spark! Keep dreaming ✨" },
-                    { min: 51, max: 70, msg: "Sweet connection! Sweet! 💕" },
+                    { min: 51, max: 70, msg: "Sweet connection! 💕" },
                     { min: 71, max: 90, msg: "Wow! Made for each other! 💖" },
                     { min: 91, max: 100, msg: "Soulmates! True love! 💘" }
                 ];
@@ -2160,11 +2177,15 @@
                 setTimeout(() => {
                     if (showInfinity) {
                         msgDiv.innerHTML = `"${name1}" + "${name2}"<br><br>Forever & Always 💕<br>True Soulmate 💖`;
+                    } else if (showRainbow) {
+                        msgDiv.innerHTML = `"${name1}" + "${name2}"<br><br>🏳️‍🌈 Ayien? 🏳️‍🌈`;
+                    } else if (showBegone) {
+                        msgDiv.innerHTML = `"${name1}" + "${name2}"<br><br>🚫 BEGONE! 🚫`;
                     } else {
-                        const msg = messages.find(m => finalPercent >= m.min && finalPercent <= m.max);
+                        const msg = messages.find(m => finalPercent >= m.min && finalPercent <= m.max) || messages[0];
                         msgDiv.innerHTML = `"${name1}" + "${name2}"<br><br>${msg.msg}`;
                     }
-                }, 1000);
+                }, duration + 100);
 
                 localStorage.setItem('loveMeterName', name1);
                 createFloatingHearts();
@@ -2871,43 +2892,31 @@ Forever yours, 💖`,
         let parsedLyrics = [];
 
         async function loadData() {
-            console.log('Loading data...');
-            console.log('Supabase client:', supabaseClient);
-            
             // If supabaseClient is null, try localStorage directly
             if (!supabaseClient) {
-                console.log('No Supabase client, loading from localStorage');
                 const saved = localStorage.getItem('birthdayData');
                 if (saved) {
                     siteData = { ...defaultData, ...JSON.parse(saved) };
                 }
+                document.getElementById('mainContent').classList.add('loaded');
                 renderContent();
                 return;
             }
             
             try {
-                console.log('Fetching from Supabase...');
                 const { data, error } = await supabaseClient
                     .from('birthday_data')
                     .select('data')
                     .eq('id', 1)
                     .single();
-                    
-                console.log('Supabase response:', data, error);
                 
-                if (error) {
-                    console.error('Supabase error:', error);
-                    throw error;
-                }
+                if (error) throw error;
                 
                 if (data && data.data && Object.keys(data.data).length > 0) {
-                    console.log('Got data from Supabase, updating siteData');
                     siteData = { ...defaultData, ...data.data };
-                    
-                    // Also save to localStorage for backup
                     try {
                         localStorage.setItem('birthdayData', JSON.stringify(siteData));
-                    } catch(e) { console.log('localStorage save failed'); }
+                    } catch(e) {}
                 }
                 
                 supabaseClient
@@ -2915,7 +2924,6 @@ Forever yours, 💖`,
                     .on('postgres_changes', 
                         { event: '*', schema: 'public', table: 'birthday_data' },
                         (payload) => {
-                            console.log('Real-time update received:', payload);
                             if (payload.new && payload.new.data) {
                                 siteData = { ...defaultData, ...payload.new.data };
                                 renderContent();
@@ -2924,17 +2932,16 @@ Forever yours, 💖`,
                     )
                     .subscribe();
                     
+                document.getElementById('mainContent').classList.add('loaded');
                 renderContent();
             } catch (e) {
-                console.error('Error loading data:', e);
-                // Fallback to localStorage
                 try {
                     const saved = localStorage.getItem('birthdayData');
                     if (saved) {
-                        console.log('Loading from localStorage fallback');
                         siteData = { ...defaultData, ...JSON.parse(saved) };
                     }
-                } catch(e) { console.log('localStorage read failed'); }
+                } catch(e) {}
+                document.getElementById('mainContent').classList.add('loaded');
                 renderContent();
             }
         }
@@ -3401,7 +3408,7 @@ Forever yours, 💖`,
                 document.getElementById('musicAlbumArt').textContent = '🎵';
             } else {
                 document.getElementById('musicTrackTitle').textContent = siteData.songTitle || 'Your Song';
-                document.getElementById('musicTrackArtist').textContent = '🎶 Special Song For You';
+                document.getElementById('musicTrackArtist').textContent = '🎶 Special Song';
                 document.getElementById('musicAlbumArt').textContent = '💕';
             }
             
